@@ -238,7 +238,7 @@ export default function AllProjectsPage() {
         </div>
       </div>
 
-      <div className="">
+      <div className="mt-5">
         {!loadingProjects ? (
           <div className="-mx-4 ring-1 ring-gray-300 sm:mx-0 sm:rounded-lg">
             <table className="min-w-full bg-white divide-y divide-gray-300 sm:rounded-lg">

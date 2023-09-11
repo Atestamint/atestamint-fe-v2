@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Layout from "@/components/layout";
 import getLeaderboard from "../utils/thegraph-queries/getLeaderboard";
 import TableShimmer from "@/components/TableShimmer";
+import ProjectModal from "@/components/ProjectModal";
 
 export default function ProjectAttestations() {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -58,10 +59,7 @@ export default function ProjectAttestations() {
                   <tr key={collectionIdx}>
                     <td className="border-t border-gray-200 px-3 py-3.5 text-smtext-gray-500">
                       <div className="font-medium text-gray-900">
-                        <a
-                          href={`/collections/${collection.nftAddress}`}
-                          className="group block flex-shrink-0"
-                        >
+                        <div className="group block flex-shrink-0">
                           <div className="flex items-center">
                             <div>
                               <Image
@@ -77,12 +75,12 @@ export default function ProjectAttestations() {
                               <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
                                 {collection.nftAddress}...
                               </p>
-                              <p className="text-xs font-medium text-gray-500 group-hover:text-gray-700">
-                                View collection
-                              </p>
+                              <ProjectModal
+                                collectionId={collection.nftAddress}
+                              />
                             </div>
                           </div>
-                        </a>
+                        </div>
                       </div>
                     </td>
 

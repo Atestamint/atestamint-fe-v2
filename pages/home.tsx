@@ -7,7 +7,9 @@ import axios from "axios";
 import HomeCTA from "@/components/HomeCTA";
 import { VAULT_CONTRACT_ABI } from "../utils/constants";
 import Layout from "@/components/layout";
+import ProjectModal from "@/components/ProjectModal";
 import TableShimmer from "@/components/TableShimmer";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 
 function AttestCollection({ collection, collectionIdx, allProjects }: any) {
   const [errorMessage, setErrorMessage] = useState("Already attested.");
@@ -79,10 +81,7 @@ function AttestCollection({ collection, collectionIdx, allProjects }: any) {
     <tr key={collectionIdx}>
       <td className="border-t border-gray-200 px-3 py-3.5 text-smtext-gray-500">
         <div className="font-medium text-gray-900">
-          <a
-            href={`collections/${collection.editionAddress}?isAttested=${isSuccess}`}
-            className="group block flex-shrink-0"
-          >
+          <div className="group block flex-shrink-0">
             <div className="flex items-center">
               <div>
                 <picture>
@@ -119,12 +118,10 @@ function AttestCollection({ collection, collectionIdx, allProjects }: any) {
                 <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
                   NFTree
                 </p>
-                <p className="text-xs font-medium text-gray-500 group-hover:text-gray-700">
-                  {collection.editionAddress}
-                </p>
+                <ProjectModal collectionId={collection.editionAddress} />
               </div>
             </div>
-          </a>
+          </div>
         </div>
       </td>
       <td className="border-t border-gray-200 px-3 py-3.5 text-sm text-gray-500">
@@ -164,6 +161,7 @@ function AttestCollection({ collection, collectionIdx, allProjects }: any) {
 
 export default function HomePage() {
   const { address } = useAccount();
+  const { openConnectModal } = useConnectModal();
 
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [allProjects, setAllProjects] = useState([]);
@@ -212,43 +210,70 @@ export default function HomePage() {
         </div>
 
         {!loadingProjects ? (
-          <div className="-mx-4 mt-5 ring-1 ring-gray-300 sm:mx-0 sm:rounded-lg">
-            <table className="min-w-full bg-white divide-y divide-gray-300 sm:rounded-lg">
-              <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
-                  >
-                    Collections
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-900 lg:table-cell"
-                  >
-                    TokenId
-                  </th>
+          address ? (
+            <div className="-mx-4 mt-5 ring-1 ring-gray-300 sm:mx-0 sm:rounded-lg">
+              <table className="min-w-full bg-white divide-y divide-gray-300 sm:rounded-lg">
+                <thead>
+                  <tr>
+                    <th
+                      scope="col"
+                      className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
+                    >
+                      Collections
+                    </th>
+                    <th
+                      scope="col"
+                      className="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-900 lg:table-cell"
+                    >
+                      TokenId
+                    </th>
 
-                  <th
-                    scope="col"
-                    className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {projectsByOwner.map((collection: any, collectionIdx) => (
-                  <AttestCollection
-                    allProjects={allProjects}
-                    collection={collection}
-                    collectionIdx={collectionIdx}
-                    key={collectionIdx}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    <th
+                      scope="col"
+                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projectsByOwner.map((collection: any, collectionIdx) => (
+                    <AttestCollection
+                      allProjects={allProjects}
+                      collection={collection}
+                      collectionIdx={collectionIdx}
+                      key={collectionIdx}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <button
+              onClick={openConnectModal}
+              type="button"
+              className="mt-5 relative block w-full rounded-lg border-2 border-dashed border-gray-300 p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-full h-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
+                />
+              </svg>
+
+              <span className="mt-2 block text-sm font-semibold text-gray-900">
+                Connect wallet to get started.
+              </span>
+            </button>
+          )
         ) : (
           <TableShimmer />
         )}

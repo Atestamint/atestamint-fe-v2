@@ -1,99 +1,101 @@
+import getAllProjectsByOwner from "../utils/thegraph-queries/getAllProjectsByOwner";
 import getAllProjects from "../utils/thegraph-queries/getAllProjects";
 import { useState, useEffect } from "react";
-import { useContractWrite } from "wagmi";
+import { useContractWrite, useAccount } from "wagmi";
 import { parseEther, formatEther } from "viem";
-import { ERC721DROP_ABI } from "../utils/constants";
+import { ERC721DROP_ABI, VAULT_CONTRACT_ABI } from "../utils/constants";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import axios from "axios";
 import Layout from "@/components/layout";
 import {
   ArchiveBoxArrowDownIcon,
-  BanknotesIcon,
-  CalendarDaysIcon,
-  ClockIcon,
-  ExclamationCircleIcon,
   ListBulletIcon,
 } from "@heroicons/react/20/solid";
 import TableShimmer from "@/components/TableShimmer";
+import ProjectModal from "@/components/ProjectModal";
 
 function classNames(...classes: any[]) {
   return classes.filter(Boolean).join(" ");
 }
-
-function PublicCollection({ collection, collectionIdx }: any) {
-  const [errorMessage, setErrorMessage] = useState("");
-  // Convert 1577000000000000 to ethers
-  let correctValue = BigInt("877000000000000");
-  const correctEtherValue = formatEther(correctValue);
+function AttestCollection({ collection, collectionIdx, allProjects }: any) {
+  const [errorMessage, setErrorMessage] = useState("Already attested.");
+  const { address } = useAccount();
+  let vaultAddress = allProjects.find(
+    (project: any) => project.id === collection.editionAddress
+  )?.vault.id;
 
   const {
+    write: attest,
     isSuccess,
-    write: mint,
     isError,
     isLoading,
     error,
   } = useContractWrite({
-    address: collection.id,
-    abi: ERC721DROP_ABI,
-    functionName: "purchase",
-    args: [1],
-    value: parseEther(correctEtherValue),
+    address: vaultAddress,
+    abi: VAULT_CONTRACT_ABI,
+    functionName: "vote",
   });
 
   useEffect(() => {
     if (isError) {
       let errorMessage: any = error;
-      errorMessage = errorMessage?.message;
-      if (errorMessage.includes("Purchase_WrongPrice")) {
-        setErrorMessage("Price not enough.");
-      } else if (errorMessage.includes("Purchase_SoldOut")) {
-        setErrorMessage("Purchase Sold Out.");
-      } else if (errorMessage.includes("Purchase_TooManyForAddress")) {
-        setErrorMessage("Already minted, can't mint more.");
+      errorMessage = errorMessage.message;
+      console.log(error);
+      if (errorMessage.includes("Vote_AlreadyVoted")) {
+        setErrorMessage("Already voted.");
       } else if (errorMessage.includes("User denied")) {
-        setErrorMessage("User denied transaction signature.");
-      } else if (errorMessage.includes("Sale_Inactive")) {
-        setErrorMessage("Sale has ended.");
-      } else if (errorMessage.includes("Mint_SoldOut")) {
-        setErrorMessage("Collection sold out.");
+        setErrorMessage("User denied tx.");
       } else {
         setErrorMessage("Unknown error.");
       }
     }
-    if (isSuccess) {
-      let collectionsToAttestCache = JSON.parse(
-        localStorage.getItem("collectionsToAttestCache") || "[]"
-      );
-      collectionsToAttestCache.push({
-        editionAddress: collection.id,
-        tokenId: 1,
-        imageURI: collection.imageURI,
-      });
+    (async () => {
+      if (isSuccess) {
+        localStorage.setItem("isSuccess", "true");
+        let attestedCollectionsCache = JSON.parse(
+          localStorage.getItem("attestedCollectionsCache") || "[]"
+        );
 
-      localStorage.setItem(
-        "collectionsToAttestCache",
-        JSON.stringify(collectionsToAttestCache)
-      );
+        attestedCollectionsCache.push(collection.editionAddress);
 
-      console.log("Minted and cached!");
-    }
-  }, [isSuccess, collection, isError, error]);
+        localStorage.setItem(
+          "attestedCollectionsCache",
+          JSON.stringify(attestedCollectionsCache)
+        );
+
+        console.log("Attested and cached!");
+      }
+
+      if (collection) {
+        await axios
+          .get(collection.imageURI)
+          .then((res) => {
+            if (res.data == null) {
+              let temp = collection;
+              temp.imageURI = "/nftree.jpg";
+              collection = temp;
+            }
+          })
+          .catch((err) => {
+            console.log("err: ", err);
+          });
+      }
+    })();
+  }, []);
 
   return (
     <tr key={collectionIdx}>
       <td className="border-t border-gray-200 px-3 py-3.5 text-smtext-gray-500">
         <div className="font-medium text-gray-900">
-          <a
-            target="_blank"
-            href={`collections/${collection.id}`}
-            className="group block flex-shrink-0"
-          >
+          <div className="group block flex-shrink-0">
             <div className="flex items-center">
               <div>
                 <picture>
                   <source
                     srcSet={
-                      collection?.imageURI !== "" ||
-                      collection?.imageURI !== null ||
-                      collection?.imageURI !== undefined
+                      collection.imageURI !== "" ||
+                      collection.imageURI !== null ||
+                      collection.imageURI !== undefined
                         ? collection.imageURI
                         : "nftree.jpg"
                     }
@@ -103,9 +105,9 @@ function PublicCollection({ collection, collectionIdx }: any) {
                     className="inline-block h-9 w-9 rounded-full"
                     loading="lazy"
                     src={
-                      collection?.imageURI !== "" ||
-                      collection?.imageURI !== null ||
-                      collection?.imageURI !== undefined
+                      collection.imageURI !== "" ||
+                      collection.imageURI !== null ||
+                      collection.imageURI !== undefined
                         ? collection.imageURI
                         : "nftree.jpg"
                     }
@@ -120,50 +122,48 @@ function PublicCollection({ collection, collectionIdx }: any) {
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
-                  {collection.id.slice(0, 10)}
+                  NFTree
                 </p>
-                <p className="text-xs font-medium text-gray-500 group-hover:text-gray-700">
-                  View more details
-                </p>
+                <ProjectModal collectionId={collection.editionAddress} />
               </div>
             </div>
-          </a>
+          </div>
         </div>
       </td>
       <td className="border-t border-gray-200 px-3 py-3.5 text-sm text-gray-500">
-        {collection.editionSize}
+        {collection.tokenId}
       </td>
-      <td className="border-t border-gray-200 px-3 py-3.5 text-sm text-gray-500">
-        {
-          parseFloat((Math.random() * 2).toFixed(2)) // Converts the string back to a floating-point number
-        }
-      </td>
-      <td className="border-t border-gray-200 px-3 py-3.5 text-sm text-gray-500">
-        {collection.vault.positiveVotes}
-      </td>
+
       <td className="border-t border-gray-200 px-3 py-3.5 text-smtext-gray-500">
         <button
-          type="button"
           onClick={() => {
-            mint();
+            console.log(collection);
+            attest({
+              args: [
+                parseInt(collection.tokenId).toString(),
+                "Very Good Collection!",
+                true,
+                address,
+              ],
+              to: address,
+            });
           }}
           className={`disabled:opacity-50 inline-flex items-center rounded-md ${
             isError ? "bg-red-400" : isSuccess ? "bg-green-300" : "bg-slate-200"
           } px-5 py-1.5 text-sm hover:text-zinc-100  hover:bg-indigo-600 shadow-lg  font-semibold text-gray-900 ring-inset ring-gray-300`}
         >
           {isLoading
-            ? "Minting..."
+            ? "Attesting..."
             : isSuccess
-            ? "Minted!"
+            ? "Attested!"
             : isError
             ? errorMessage
-            : "Mint"}
+            : "Attest"}
         </button>
       </td>
     </tr>
   );
 }
-
 const tabs = [
   {
     name: "My Projects",
@@ -176,15 +176,39 @@ const tabs = [
     icon: ListBulletIcon,
   },
 ];
+
 export default function AllProjectsPage() {
+  const { address } = useAccount();
+  const { openConnectModal } = useConnectModal();
+
   const [loadingProjects, setLoadingProjects] = useState(true);
-  const [allProjects, setAllProjects] = useState([]);
   const [currentTab, setCurrentTab] = useState<any>("my-projects");
+  const [allProjects, setAllProjects] = useState([]);
+  const [projectsByOwner, setProjectsByOwner] = useState([]);
 
   useEffect(() => {
     (async () => {
       const allProjects: any = await getAllProjects();
       setAllProjects(allProjects);
+
+      let projectsByOwner: any = await getAllProjectsByOwner(address);
+      let collectionsToAttestCache = JSON.parse(
+        localStorage.getItem("collectionsToAttestCache") || "[]"
+      );
+
+      projectsByOwner = projectsByOwner.map((project: any) => {
+        let collection = allProjects.find(
+          (collection: any) => collection.id === project.editionAddress
+        );
+
+        return {
+          ...project,
+          imageURI: collection.imageURI,
+        };
+      });
+
+      projectsByOwner = [...projectsByOwner, ...collectionsToAttestCache];
+      setProjectsByOwner(projectsByOwner);
       setLoadingProjects(false);
     })();
   }, []);
@@ -248,53 +272,70 @@ export default function AllProjectsPage() {
 
       <div className="">
         {!loadingProjects ? (
-          <div className="-mx-4 ring-1 ring-gray-300 sm:mx-0 sm:rounded-lg">
-            <table className="min-w-full bg-white divide-y divide-gray-300 sm:rounded-lg">
-              <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
-                  >
-                    Collections
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-900 lg:table-cell"
-                  >
-                    Supply
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-900 lg:table-cell"
-                  >
-                    Funds Locked
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                  >
-                    Attestations
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {allProjects.map((collection: any, collectionIdx) => (
-                  <PublicCollection
-                    collection={collection}
-                    key={collectionIdx}
-                    collectionIdx={collectionIdx}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          address ? (
+            <div className="-mx-4 mt-5 ring-1 ring-gray-300 sm:mx-0 sm:rounded-lg">
+              <table className="min-w-full bg-white divide-y divide-gray-300 sm:rounded-lg">
+                <thead>
+                  <tr>
+                    <th
+                      scope="col"
+                      className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
+                    >
+                      Collections
+                    </th>
+                    <th
+                      scope="col"
+                      className="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-900 lg:table-cell"
+                    >
+                      TokenId
+                    </th>
+
+                    <th
+                      scope="col"
+                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projectsByOwner.map((collection: any, collectionIdx) => (
+                    <AttestCollection
+                      allProjects={allProjects}
+                      collection={collection}
+                      collectionIdx={collectionIdx}
+                      key={collectionIdx}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <button
+              onClick={openConnectModal}
+              type="button"
+              className="mt-5 relative block w-full rounded-lg border-2 border-dashed border-gray-300 p-12 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-full h-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3"
+                />
+              </svg>
+
+              <span className="mt-2 block text-sm font-semibold text-gray-900">
+                Connect wallet to get started.
+              </span>
+            </button>
+          )
         ) : (
           <TableShimmer rows={5} />
         )}
