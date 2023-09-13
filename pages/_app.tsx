@@ -9,12 +9,19 @@ import {
   lightTheme,
 } from "@rainbow-me/rainbowkit";
 import { configureChains, createConfig, WagmiConfig } from "wagmi";
-import { optimism, optimismGoerli, zora, goerli } from "wagmi/chains";
+import {
+  optimism,
+  optimismGoerli,
+  zora,
+  goerli,
+  base,
+  baseGoerli,
+} from "wagmi/chains";
 import { alchemyProvider } from "wagmi/providers/alchemy";
 import { publicProvider } from "wagmi/providers/public";
 
 const { chains, publicClient } = configureChains(
-  [optimismGoerli, optimism, zora, goerli],
+  [optimismGoerli, optimism, zora, goerli, base, baseGoerli],
   [
     alchemyProvider({
       apiKey: process.env.NEXT_PUBLIC_ALCHEMY_KEY,
